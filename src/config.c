@@ -169,6 +169,7 @@ void loadServerConfigFromString(char *config) {
         lines[i] = sdstrim(lines[i]," \t\r\n");
 
         /* Skip comments and blank lines */
+        // 空行或者#开头的注释行忽略
         if (lines[i][0] == '#' || lines[i][0] == '\0') continue;
 
         /* Split into arguments */
@@ -183,8 +184,10 @@ void loadServerConfigFromString(char *config) {
             sdsfreesplitres(argv,argc);
             continue;
         }
+        // 转成小写
         sdstolower(argv[0]);
 
+        // 参数校验
         /* Execute config directives */
         if (!strcasecmp(argv[0],"timeout") && argc == 2) {
             server.maxidletime = atoi(argv[1]);
@@ -202,7 +205,7 @@ void loadServerConfigFromString(char *config) {
             }
         } else if (!strcasecmp(argv[0],"port") && argc == 2) {
             server.port = atoi(argv[1]);
-            if (server.port < 0 || server.port > 65535) {
+            if (server.port < 0 || server.port > 65535) {// server端口必须在0到65535之间
                 err = "Invalid port"; goto loaderr;
             }
         } else if (!strcasecmp(argv[0],"tcp-backlog") && argc == 2) {
@@ -283,7 +286,7 @@ void loadServerConfigFromString(char *config) {
             }
         } else if (!strcasecmp(argv[0],"databases") && argc == 2) {
             server.dbnum = atoi(argv[1]);
-            if (server.dbnum < 1) {
+            if (server.dbnum < 1) {// 至少有有一个数据库
                 err = "Invalid number of databases"; goto loaderr;
             }
         } else if (!strcasecmp(argv[0],"include") && argc == 2) {
@@ -402,7 +405,7 @@ void loadServerConfigFromString(char *config) {
             if ((server.aof_no_fsync_on_rewrite= yesnotoi(argv[1])) == -1) {
                 err = "argument must be 'yes' or 'no'"; goto loaderr;
             }
-        } else if (!strcasecmp(argv[0],"appendfsync") && argc == 2) {
+        } else if (!strcasecmp(argv[0],"appendfsync") && argc == 2) {// appendfsync只能是no、always、everysec其中之一
             server.aof_fsync = configEnumGetValue(aof_fsync_enum,argv[1]);
             if (server.aof_fsync == INT_MIN) {
                 err = "argument must be 'no', 'always' or 'everysec'";
@@ -467,7 +470,7 @@ void loadServerConfigFromString(char *config) {
             server.zset_max_ziplist_value = memtoll(argv[1], NULL);
         } else if (!strcasecmp(argv[0],"hll-sparse-max-bytes") && argc == 2) {
             server.hll_sparse_max_bytes = memtoll(argv[1], NULL);
-        } else if (!strcasecmp(argv[0],"rename-command") && argc == 3) {
+        } else if (!strcasecmp(argv[0],"rename-command") && argc == 3) {// 重命名后的命令
             struct redisCommand *cmd = lookupCommand(argv[1]);
             int retval;
 

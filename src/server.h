@@ -75,6 +75,7 @@ typedef long long mstime_t; /* millisecond time type. */
 #define C_ERR                   -1
 
 /* Static server configuration */
+/* 服务器默认配置 */
 #define CONFIG_DEFAULT_HZ        10      /* Time interrupt calls/sec. */
 #define CONFIG_MIN_HZ            1
 #define CONFIG_MAX_HZ            500
@@ -189,6 +190,7 @@ typedef long long mstime_t; /* millisecond time type. */
 #define CMD_FAST 8192                 /* "F" flag */
 
 /* Object types */
+/* 对象类型 */
 #define OBJ_STRING 0
 #define OBJ_LIST 1
 #define OBJ_SET 2
@@ -198,6 +200,7 @@ typedef long long mstime_t; /* millisecond time type. */
 /* Objects encoding. Some kind of objects like Strings and Hashes can be
  * internally represented in multiple ways. The 'encoding' field of the object
  * is set to one of this fields for this object. */
+/* 对象编码,对象的encoding属性被设置成下面这些常量之一 */
 #define OBJ_ENCODING_RAW 0     /* Raw representation */
 #define OBJ_ENCODING_INT 1     /* Encoded as integer */
 #define OBJ_ENCODING_HT 2      /* Encoded as hash table */
@@ -460,11 +463,22 @@ typedef long long mstime_t; /* millisecond time type. */
 #define LRU_BITS 24
 #define LRU_CLOCK_MAX ((1<<LRU_BITS)-1) /* Max value of obj->lru */
 #define LRU_CLOCK_RESOLUTION 1000 /* LRU clock resolution in ms */
+/* 对象类型 */
 typedef struct redisObject {
+
+    // 类型
     unsigned type:4;
+
+    // 对象编码
     unsigned encoding:4;
+
+    // 对象最后一次访问时间
     unsigned lru:LRU_BITS; /* lru time (relative to server.lruclock) */
+
+    // 引用计数
     int refcount;
+    
+    // 指向实际值的指针
     void *ptr;
 } robj;
 
@@ -986,6 +1000,8 @@ typedef struct pubsubPattern {
 
 typedef void redisCommandProc(client *c);
 typedef int *redisGetKeysProc(struct redisCommand *cmd, robj **argv, int argc, int *numkeys);
+
+/* 命令的结构 */
 struct redisCommand {
     char *name;
     redisCommandProc *proc;
