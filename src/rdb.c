@@ -706,7 +706,7 @@ int rdbSaveKeyValuePair(rio *rdb, robj *key, robj *val,
     /* Save the expire time */
     if (expiretime != -1) {
         /* If this key is already expired skip it */
-        if (expiretime < now) return 0;
+        if (expiretime < now) return 0;// 已过期的键不会保存到新创建的rdb文件
         if (rdbSaveType(rdb,RDB_OPCODE_EXPIRETIME_MS) == -1) return -1;
         if (rdbSaveMillisecondTime(rdb,expiretime) == -1) return -1;
     }
@@ -1392,6 +1392,7 @@ int rdbLoad(char *filename) {
          * received from the master. In the latter case, the master is
          * responsible for key expiry. If we would expire keys here, the
          * snapshot taken by the master may not be reflected on the slave. */
+        // 主库不会载入已过期的键
         if (server.masterhost == NULL && expiretime != -1 && expiretime < now) {
             decrRefCount(key);
             decrRefCount(val);
