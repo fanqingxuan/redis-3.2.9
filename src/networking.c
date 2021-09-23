@@ -82,7 +82,7 @@ client *createClient(int fd) {
         }
     }
 
-    selectDb(c,0);
+    selectDb(c,0);// 客户端默认连接0号数据库
     c->id = server.next_client_id++;
     c->fd = fd;
     c->name = NULL;

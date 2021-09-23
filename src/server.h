@@ -581,11 +581,11 @@ typedef struct client {
     int fd;                 /* Client socket. */
     redisDb *db;            /* 客户端当前正在使用的数据库 */
     int dictid;             /* ID of the currently SELECTed DB. */
-    robj *name;             /* As set by CLIENT SETNAME. */
+    robj *name;             /* 客户端名称. */
     sds querybuf;           /* Buffer we use to accumulate client queries. */
     size_t querybuf_peak;   /* Recent (100ms or more) peak of querybuf size. */
-    int argc;               /* Num of arguments of current command. */
-    robj **argv;            /* Arguments of current command. */
+    int argc;               /* 当前命令参数个数. */
+    robj **argv;            /* 当前命令参数. */
     struct redisCommand *cmd, *lastcmd;  /* Last command executed. */
     int reqtype;            /* Request protocol type: PROTO_REQ_* */
     int multibulklen;       /* Number of multi bulk arguments left to read. */
@@ -594,7 +594,7 @@ typedef struct client {
     unsigned long long reply_bytes; /* Tot bytes of objects in reply list. */
     size_t sentlen;         /* Amount of bytes already sent in the current
                                buffer or object being sent. */
-    time_t ctime;           /* Client creation time. */
+    time_t ctime;           /* 客户端创建时间. */
     time_t lastinteraction; /* Time of the last interaction, used for timeout */
     time_t obuf_soft_limit_reached_time;
     int flags;              /* Client flags: CLIENT_* macros. */
