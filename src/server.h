@@ -811,7 +811,7 @@ struct redisServer {
     /* AOF persistence */
     int aof_state;                  /* AOF_(ON|OFF|WAIT_REWRITE) */
     int aof_fsync;                  /* Kind of fsync() policy */
-    char *aof_filename;             /* Name of the AOF file */
+    char *aof_filename;             /* aof文件名 */
     int aof_no_fsync_on_rewrite;    /* Don't fsync if a rewrite is in prog. */
     int aof_rewrite_perc;           /* Rewrite AOF if % growth is > M and... */
     off_t aof_rewrite_min_size;     /* the AOF file is at least N bytes. */
@@ -859,7 +859,7 @@ struct redisServer {
     int rdb_bgsave_scheduled;       /* BGSAVE when possible if true. */
     int rdb_child_type;             /* Type of save by active child. */
     int lastbgsave_status;          /*上次bgsave命令执行成功、还是失败 */
-    int stop_writes_on_bgsave_err;  /* Don't allow writes if can't BGSAVE */
+    int stop_writes_on_bgsave_err;  /* 如果为yes，主库上次bgsave命令执行失败，则不允许执行写命令 */
     int rdb_pipe_write_result_to_parent; /* RDB pipes used to return the state */
     int rdb_pipe_read_result_from_child; /* of each slave in diskless SYNC. */
     /* Propagation of commands in AOF / replication */
