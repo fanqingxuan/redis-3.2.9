@@ -245,18 +245,30 @@ typedef long long mstime_t; /* millisecond time type. */
 #define AOF_WAIT_REWRITE 2    /* AOF waits rewrite to start appending */
 
 /* Client flags */
+
+// 客户端是一个从服务器
 #define CLIENT_SLAVE (1<<0)   /* This client is a slave server */
+
+// 客户端是一个主服务器
 #define CLIENT_MASTER (1<<1)  /* This client is a master server */
+
+// 客户端正在执行MONITOR命令
 #define CLIENT_MONITOR (1<<2) /* This client is a slave monitor, see MONITOR */
+
+// 正在执行事务的客户端
 #define CLIENT_MULTI (1<<3)   /* This client is in a MULTI context */
 #define CLIENT_BLOCKED (1<<4) /* The client is waiting in a blocking operation */
 #define CLIENT_DIRTY_CAS (1<<5) /* Watched keys modified. EXEC will fail. */
 #define CLIENT_CLOSE_AFTER_REPLY (1<<6) /* Close after writing entire reply. */
 #define CLIENT_UNBLOCKED (1<<7) /* This client was unblocked and is stored in
                                   server.unblocked_clients */
+
+// 客户端是专门用于处理lua脚本的伪客户端
 #define CLIENT_LUA (1<<8) /* This is a non connected client used by Lua */
 #define CLIENT_ASKING (1<<9)     /* Client issued the ASKING command */
 #define CLIENT_CLOSE_ASAP (1<<10)/* Close this client ASAP */
+
+//使用unix套接字连接的客户端
 #define CLIENT_UNIX_SOCKET (1<<11) /* Client connected via Unix domain socket */
 #define CLIENT_DIRTY_EXEC (1<<12)  /* EXEC will fail for errors while queueing */
 #define CLIENT_MASTER_FORCE_REPLY (1<<13)  /* Queue replies even if is master */
@@ -578,14 +590,16 @@ typedef struct readyList {
  * Clients are taken in a linked list. */
 typedef struct client {
     uint64_t id;            /* Client incremental unique ID. */
-    int fd;                 /* Client socket. */
+    int fd;                 /* 客户端套接字描述符，大于等于-1的整数，aof文件和lua脚本的客户端该值是-1 */
     redisDb *db;            /* 客户端当前正在使用的数据库 */
     int dictid;             /* ID of the currently SELECTed DB. */
-    robj *name;             /* 客户端名称. */
+    robj *name;             /* 客户端名称，默认为空，可以用setName命令设置客户端名字. */
+
+    // 输入缓冲区, 用于保存客户端发送的命令请求最大大小不能超过1G，否则服务器将关闭这个客户端
     sds querybuf;           /* Buffer we use to accumulate client queries. */
     size_t querybuf_peak;   /* Recent (100ms or more) peak of querybuf size. */
-    int argc;               /* 当前命令参数个数. */
-    robj **argv;            /* 当前命令参数. */
+    int argc;               /* 当前客户端命令参数个数. */
+    robj **argv;            /* 当前客户端命令参数，argv[0]是要执行的命令名称，之后的其它项是传给命令的参数. */
     struct redisCommand *cmd, *lastcmd;  /* Last command executed. */
     int reqtype;            /* Request protocol type: PROTO_REQ_* */
     int multibulklen;       /* Number of multi bulk arguments left to read. */
@@ -597,7 +611,7 @@ typedef struct client {
     time_t ctime;           /* 客户端创建时间. */
     time_t lastinteraction; /* Time of the last interaction, used for timeout */
     time_t obuf_soft_limit_reached_time;
-    int flags;              /* Client flags: CLIENT_* macros. */
+    int flags;              /* 客户端标识: 值可以参考宏C LIENT_* */
     int authenticated;      /* When requirepass is non-NULL. */
     int replstate;          /* Replication state if this is a slave. */
     int repl_put_online_on_ack; /* Install slave write handler on ACK. */
