@@ -1065,6 +1065,7 @@ int rewriteAppendOnlyFile(char *filename) {
             expiretime = getExpire(db,&key);
 
             /* If this key is already expired skip it */
+            // 已过期的键不会被保存到重写后的AOF文件中
             if (expiretime != -1 && expiretime < now) continue;
 
             /* Save the key and associated value */

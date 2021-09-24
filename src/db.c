@@ -85,6 +85,9 @@ robj *lookupKey(redisDb *db, robj *key, int flags) {
  * for read operations. Even if the key expiry is master-driven, we can
  * correctly report a key is expired on slaves even if the master is lagging
  * expiring our key via DELs in the replication link. */
+/**
+ * 
+ */
 robj *lookupKeyReadWithFlags(redisDb *db, robj *key, int flags) {
     robj *val;
 
@@ -106,6 +109,7 @@ robj *lookupKeyReadWithFlags(redisDb *db, robj *key, int flags) {
          * will say the key as non exisitng.
          *
          * Notably this covers GETs when slaves are used to scale reads. */
+        // 从服务器不会删除过期键，但依然返回空结果
         if (server.current_client &&
             server.current_client != server.master &&
             server.current_client->cmd &&
@@ -134,6 +138,7 @@ robj *lookupKeyRead(redisDb *db, robj *key) {
  * Returns the linked value object if the key exists or NULL if the key
  * does not exist in the specified DB. */
 robj *lookupKeyWrite(redisDb *db, robj *key) {
+    // 删除过期键
     expireIfNeeded(db,key);
     return lookupKey(db,key,LOOKUP_NONE);
 }
@@ -893,13 +898,23 @@ void propagateExpire(redisDb *db, robj *key) {
     decrRefCount(argv[1]);
 }
 
+/*
+ * 检查 key 是否已经过期，如果是的话，将它从数据库中删除。
+ *
+ * 返回 0 表示键没有过期时间，或者键未过期。
+ *
+ * 返回 1 表示键已经因为过期而被删除了。
+ */
 int expireIfNeeded(redisDb *db, robj *key) {
+    // 获取键过期时间
     mstime_t when = getExpire(db,key);
     mstime_t now;
 
+    // 没有设置过期时间
     if (when < 0) return 0; /* No expire for this key */
 
     /* Don't expire anything while loading. It will be done later. */
+    // 如果服务器正在进行载入，那么不进行任何过期检查
     if (server.loading) return 0;
 
     /* If we are in the context of a Lua script, we claim that time is
@@ -916,17 +931,23 @@ int expireIfNeeded(redisDb *db, robj *key) {
      * Still we try to return the right information to the caller,
      * that is, 0 if we think the key should be still valid, 1 if
      * we think the key is expired at this time. */
+    // 从服务器判断,直接返回逻辑值
     if (server.masterhost != NULL) return now > when;
 
     /* Return when this key has not expired */
+    // 未过期
     if (now <= when) return 0;
 
     /* Delete the key */
     server.stat_expiredkeys++;
+
+    // 发送DEL命令给所有从库
+    // 如果开启AOF的话，追加DEL命令到AOF文件
+    
     propagateExpire(db,key);
+
     notifyKeyspaceEvent(NOTIFY_EXPIRED,
         "expired",key,db->id);
-    return dbDelete(db,key);
 }
 
 /*-----------------------------------------------------------------------------
