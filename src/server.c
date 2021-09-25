@@ -1280,6 +1280,7 @@ int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
     }
 
     /* Close clients that need to be closed asynchronous */
+    // 关闭输出缓冲区超出限制的客户端、有安全问题的客户端、长时间阻塞的客户端
     freeClientsInAsyncFreeQueue();
 
     /* Clear the paused clients flag if needed. */
