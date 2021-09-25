@@ -1021,7 +1021,9 @@ void clientsCron(void) {
         /* The following functions do different service checks on the client.
          * The protocol is that they return non-zero if the client was
          * terminated. */
+        // 关闭超时客户端
         if (clientsCronHandleTimeout(c,now)) continue;
+        // 校正客户端缓冲区
         if (clientsCronResizeQueryBuffer(c)) continue;
     }
 }
@@ -1032,6 +1034,7 @@ void clientsCron(void) {
 void databasesCron(void) {
     /* Expire keys by random sampling. Not required for slaves
      * as master will synthesize DELs for us. */
+    // 删除过期键
     if (server.active_expire_enabled && server.masterhost == NULL)
         activeExpireCycle(ACTIVE_EXPIRE_CYCLE_SLOW);
 
@@ -1182,6 +1185,7 @@ int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
 
     /* Start a scheduled AOF rewrite if this was requested by the user while
      * a BGSAVE was in progress. */
+    // 有BGREWRITEAOF命令被延迟了，执行aof重写
     if (server.rdb_child_pid == -1 && server.aof_child_pid == -1 &&
         server.aof_rewrite_scheduled)
     {
@@ -1245,7 +1249,7 @@ int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
          }
 
          /* Trigger an AOF rewrite if needed */
-         // 
+         // 满足aof重写条件，进行aof重写
          if (server.rdb_child_pid == -1 &&
              server.aof_child_pid == -1 &&
              server.aof_rewrite_perc &&
@@ -2309,7 +2313,7 @@ void call(client *c, int flags) {
     }
     if (flags & CMD_CALL_STATS) {
         c->lastcmd->microseconds += duration;
-        c->lastcmd->calls++;
+        c->lastcmd->calls++;// 命令请求次数+1
     }
 
     /* Propagate the command into the AOF and replication link */

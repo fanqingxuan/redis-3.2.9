@@ -764,6 +764,7 @@ struct redisServer {
     char *requirepass;          /* Pass for AUTH command, or NULL */
     char *pidfile;              /* PID file path */
     int arch_bits;              /* 32 or 64 depending on sizeof(long) */
+    // 记录后台任务serverCron执行的次数
     int cronloops;              /* Number of times the cron function run */
     char runid[CONFIG_RUN_ID_SIZE+1];  /* ID always different at every exec. */
     int sentinel_mode;          /* True if this instance is a Sentinel. */
@@ -807,6 +808,7 @@ struct redisServer {
     long long stat_evictedkeys;     /* Number of evicted keys (maxmemory) */
     long long stat_keyspace_hits;   /* Number of successful lookups of keys */
     long long stat_keyspace_misses; /* Number of failed lookups of keys */
+    // 已使用内存峰值
     size_t stat_peak_memory;        /* Max used memory record */
     long long stat_fork_time;       /* Time needed to perform latest fork() */
     double stat_fork_rate;          /* Fork rate in GB/sec. */
@@ -849,7 +851,10 @@ struct redisServer {
     off_t aof_rewrite_min_size;     /* the AOF file is at least N bytes. */
     off_t aof_rewrite_base_size;    /* AOF size on latest startup or rewrite. */
     off_t aof_current_size;         /* AOF current size. */
+    // 如果值为1，表示有BGREWRITEAOF命令被延迟了
     int aof_rewrite_scheduled;      /* Rewrite once BGSAVE terminates. */
+    // 记录执行BGREWRITEAOF命令的子进程ID
+    // 如果服务器没有在执行BGREWRITEAOF，值是-1
     pid_t aof_child_pid;            /* PID if rewriting process */
     list *aof_rewrite_buf_blocks;   /* Hold changes during an AOF rewrite. */
     sds aof_buf;      /* AOF buffer, written before entering the event loop */
@@ -889,6 +894,8 @@ struct redisServer {
     time_t rdb_save_time_last;      /* Time used by last RDB save run. */
     time_t rdb_save_time_start;     /* Current RDB save start time. */
     int rdb_bgsave_scheduled;       /* BGSAVE when possible if true. */
+    // 记录执行BGSAVE命令的子进程ID
+    // 如果服务器没有在执行BGSAVE，值是-1
     int rdb_child_type;             /* Type of save by active child. */
     int lastbgsave_status;          /*上次bgsave命令执行成功、还是失败 */
     int stop_writes_on_bgsave_err;  /* 如果为yes，主库上次bgsave命令执行失败，则不允许执行写命令 */
@@ -1036,10 +1043,16 @@ typedef int *redisGetKeysProc(struct redisCommand *cmd, robj **argv, int argc, i
 
 /* 命令的结构 */
 struct redisCommand {
+    // 命令的名字
     char *name;
+    // 命令的具体实现函数，如setCommand,getCommand等
     redisCommandProc *proc;
+    // 命令的参数个数,用于检查命令请求的格式是否正确，如果这个值是负数-N，那么表示参数的数量大于等于N。
+    // 注意命令的名字本身也是一个参数，比如 set name json 参数个数是3，分别是set、name、json
     int arity;
+    // 字符串形式的标识，这个值记录了命令的属性，比如是读命令还是写命令，是否允许在数据载入时使用，是否允许在lua脚本中使用等，每一个标示值用一个字符表示
     char *sflags; /* Flags as string representation, one char per flag. */
+    // 对sflags标识进行分析得出的二进制标识，由程序自动生成
     int flags;    /* The actual flags, obtained from the 'sflags' field. */
     /* Use a function to determine keys arguments in a command line.
      * Used for Redis Cluster redirect. */
@@ -1048,6 +1061,9 @@ struct redisCommand {
     int firstkey; /* The first argument that's a key (0 = no keys) */
     int lastkey;  /* The last argument that's a key */
     int keystep;  /* The step between first and last key */
+
+    // calls 服务器总共执行了多少次这个命令
+    // microseconds 服务器执行这个命令所耗费的总时长
     long long microseconds, calls;
 };
 
