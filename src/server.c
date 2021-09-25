@@ -934,7 +934,8 @@ long long getInstantaneousMetric(int metric) {
  * each iteration would be costly without any actual gain. */
 int clientsCronHandleTimeout(client *c, mstime_t now_ms) {
     time_t now = now_ms/1000;
-
+    // 如果设置了客户端超时时间(默认没有设置)，当客户端的空闲时间超过maxidletime配置时，客户端将被关闭
+    // 注意:当客户端是主服务，从服务器，正在执行阻塞命令或者正在执行订阅命令时，即使超过了maxidletime设置，客户端不会被关闭
     if (server.maxidletime &&
         !(c->flags & CLIENT_SLAVE) &&    /* no timeout for slaves */
         !(c->flags & CLIENT_MASTER) &&   /* no timeout for masters */
@@ -2407,6 +2408,8 @@ int processCommand(client *c) {
     }
 
     /* Check if the user is authenticated */
+    // 服务器开启了身份验证功能，如果客户端没有通过验证，即authenticated=0，则执行auth之外的任何命令，都会提示认证失败
+    // 如果服务器没有开启身份认证，即使authenticated=0，也可以正常执行客户端命令
     if (server.requirepass && !c->authenticated && c->cmd->proc != authCommand)
     {
         flagTransaction(c);

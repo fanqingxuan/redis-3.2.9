@@ -82,7 +82,8 @@ client *createClient(int fd) {
         }
     }
 
-    selectDb(c,0);// 客户端默认连接0号数据库
+    // 客户端默认连接0号数据库
+    selectDb(c,0);
     c->id = server.next_client_id++;
     c->fd = fd;
     c->name = NULL;
@@ -626,6 +627,7 @@ static void acceptCommonHandler(int fd, int flags, char *ip) {
      * connection. Note that we create the client instead to check before
      * for this condition, since now the socket is already set in non-blocking
      * mode and we can send an error for free using the Kernel I/O */
+     // 连接的客户端已经超过了服务器配置最大连接数量maxclients，则关闭当前连接
     if (listLength(server.clients) > server.maxclients) {
         char *err = "-ERR max number of clients reached\r\n";
 
@@ -1347,6 +1349,7 @@ void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
     }
 
     sdsIncrLen(c->querybuf,nread);
+    // 更新客户端与服务器最后一次互动时间
     c->lastinteraction = server.unixtime;
     if (c->flags & CLIENT_MASTER) c->reploff += nread;
     server.stat_net_input_bytes += nread;

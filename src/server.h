@@ -534,6 +534,8 @@ typedef struct redisDb {
     dict *ready_keys;           /* Blocked keys that received a PUSH */
     dict *watched_keys;         /* WATCHED keys for MULTI/EXEC CAS */
     struct evictionPoolEntry *eviction_pool;    /* Eviction pool of keys */
+
+    // 数据库id
     int id;                     /* Database ID */
     long long avg_ttl;          /* Average TTL, just for stats */
 } redisDb;
@@ -598,21 +600,35 @@ typedef struct client {
     // 输入缓冲区, 用于保存客户端发送的命令请求最大大小不能超过1G，否则服务器将关闭这个客户端
     sds querybuf;           /* Buffer we use to accumulate client queries. */
     size_t querybuf_peak;   /* Recent (100ms or more) peak of querybuf size. */
-    int argc;               /* 当前客户端命令参数个数. */
-    robj **argv;            /* 当前客户端命令参数，argv[0]是要执行的命令名称，之后的其它项是传给命令的参数. */
+
+    /* 当前客户端命令参数个数. */
+    int argc;               
+    /* 当前客户端命令参数，argv[0]是要执行的命令名称，之后的其它项是传给命令的参数. */
+    robj **argv;  
+
     struct redisCommand *cmd, *lastcmd;  /* Last command executed. */
     int reqtype;            /* Request protocol type: PROTO_REQ_* */
     int multibulklen;       /* Number of multi bulk arguments left to read. */
     long bulklen;           /* Length of bulk argument in multi bulk request. */
+
+    // 可变大小的输出缓冲区， 用于保存长度比较大的回复，如一个非常长的字符串、很多项组成的列表、包含了很多元素的集合
     list *reply;            /* List of reply objects to send to the client. */
     unsigned long long reply_bytes; /* Tot bytes of objects in reply list. */
+
+
     size_t sentlen;         /* Amount of bytes already sent in the current
                                buffer or object being sent. */
-    time_t ctime;           /* 客户端创建时间. */
+    // 客户端创建时间,用来表示客户端与服务器已经连接了多少秒                            
+    time_t ctime;     
+
+    // 记录客户端与服务器最后一次交互时间   
     time_t lastinteraction; /* Time of the last interaction, used for timeout */
     time_t obuf_soft_limit_reached_time;
     int flags;              /* 客户端标识: 值可以参考宏C LIENT_* */
+
+    // 客户端是否通过了身份验证，0未通过验证，1已通过验证
     int authenticated;      /* When requirepass is non-NULL. */
+
     int replstate;          /* Replication state if this is a slave. */
     int repl_put_online_on_ack; /* Install slave write handler on ACK. */
     int repldbfd;           /* Replication DB file descriptor. */
@@ -639,6 +655,8 @@ typedef struct client {
     sds peerid;             /* Cached peer ID. */
 
     /* Response buffer */
+    // 固定大小的输出缓冲区，用于保存那些长度比较小的回复，比如OK、简短的字符串值、整数值、错误回复等等
+    // bufpos记录了buf数组目前已使用的字节数量
     int bufpos;
     char buf[PROTO_REPLY_CHUNK_BYTES];
 } client;
@@ -978,6 +996,7 @@ struct redisServer {
                                           there is at least an uncovered slot.*/
     /* Scripting */
     lua_State *lua; /* The Lua interpreter. We use just one for all clients */
+    // lua伪客户端，在服务器运行的整个生命周期中会一直存在，只有服务器关闭时，这个客户端才会被关闭
     client *lua_client;   /* The "fake client" to query Redis from Lua */
     client *lua_caller;   /* The client running EVAL right now, or NULL */
     dict *lua_scripts;         /* A dictionary of SHA1 -> Lua scripts */

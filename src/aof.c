@@ -633,7 +633,7 @@ int loadAppendOnlyFile(char *filename) {
     /* Temporarily disable AOF, to prevent EXEC from feeding a MULTI
      * to the same file we're about to read. */
     server.aof_state = AOF_OFF;
-
+    // 创建伪客户端
     fakeClient = createFakeClient();
     startLoading(fp);
 
