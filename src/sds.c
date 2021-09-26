@@ -38,6 +38,7 @@
 #include "sds.h"
 #include "sdsalloc.h"
 
+// 根据header类型得到header大小
 static inline int sdsHdrSize(char type) {
     switch(type&SDS_TYPE_MASK) {
         case SDS_TYPE_5:
@@ -136,22 +137,26 @@ sds sdsnewlen(const void *init, size_t initlen) {
 
 /* Create an empty (zero length) sds string. Even in this case the string
  * always has an implicit null term. */
+// 创建一个空字符串sds
 sds sdsempty(void) {
     return sdsnewlen("",0);
 }
 
 /* Create a new sds string starting from a null terminated C string. */
+// 创建一个包含给定字符串的sds
 sds sdsnew(const char *init) {
     size_t initlen = (init == NULL) ? 0 : strlen(init);
     return sdsnewlen(init, initlen);
 }
 
 /* Duplicate an sds string. */
+// 复制sds
 sds sdsdup(const sds s) {
     return sdsnewlen(s, sdslen(s));
 }
 
 /* Free an sds string. No operation is performed if 's' is NULL. */
+// 释放给定的sds
 void sdsfree(sds s) {
     if (s == NULL) return;
     s_free((char*)s-sdsHdrSize(s[-1]));
@@ -180,6 +185,7 @@ void sdsupdatelen(sds s) {
  * However all the existing buffer is not discarded but set as free space
  * so that next append operations will not require allocations up to the
  * number of bytes previously available. */
+// 清空sds的内容
 void sdsclear(sds s) {
     sdssetlen(s, 0);
     s[0] = '\0';
@@ -191,6 +197,7 @@ void sdsclear(sds s) {
  *
  * Note: this does not change the *length* of the sds string as returned
  * by sdslen(), but only the free buffer space we have. */
+// 空间预分配
 sds sdsMakeRoomFor(sds s, size_t addlen) {
     void *sh, *newsh;
     size_t avail = sdsavail(s);
@@ -199,15 +206,17 @@ sds sdsMakeRoomFor(sds s, size_t addlen) {
     int hdrlen;
 
     /* Return ASAP if there is enough space left. */
+    // 剩余空间足够
     if (avail >= addlen) return s;
 
     len = sdslen(s);
     sh = (char*)s-sdsHdrSize(oldtype);
     newlen = (len+addlen);
+    // 修改之后的总长度小于1M,那么多分配1倍
     if (newlen < SDS_MAX_PREALLOC)
         newlen *= 2;
     else
-        newlen += SDS_MAX_PREALLOC;
+        newlen += SDS_MAX_PREALLOC;// 修改之后的总长度大于等于1M,多分配 1M 的未使用空间
 
     type = sdsReqType(newlen);
 

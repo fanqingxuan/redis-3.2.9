@@ -1467,7 +1467,7 @@ void createSharedObjects(void) {
 
 void initServerConfig(void) {
     int j;
-
+    // 设置服务器的运行id
     getRandomHexChars(server.runid,CONFIG_RUN_ID_SIZE);
     server.configfile = NULL;
     server.executable = NULL;
