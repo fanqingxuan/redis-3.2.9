@@ -644,6 +644,7 @@ static void acceptCommonHandler(int fd, int flags, char *ip) {
      * is no password set, nor a specific interface is bound, we don't accept
      * requests from non loopback interfaces. Instead we try to explain the
      * user what to do to fix it if needed. */
+    // 如果开启了protected_mode模式,没有指定bind选项，并且未设置密码，Redis服务端只接受来自127.0.0.1和::1的客户端以及Unix域的Socket进行连接
     if (server.protected_mode &&
         server.bindaddr_count == 0 &&
         server.requirepass == NULL &&
@@ -1353,7 +1354,7 @@ void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
     c->lastinteraction = server.unixtime;
     if (c->flags & CLIENT_MASTER) c->reploff += nread;
     server.stat_net_input_bytes += nread;
-    // querybuf超过1G，自动关闭客户端
+    // 客户端发送的命令请求的大小超过了输入缓冲区的限制大小（默认为1GB）,会关闭客户端
     if (sdslen(c->querybuf) > server.client_max_querybuf_len) {
         sds ci = catClientInfoString(sdsempty(),c), bytes = sdsempty();
 
@@ -1512,7 +1513,7 @@ void clientCommand(client *c) {
             addReply(c,shared.syntaxerr);
             return;
         }
-    } else if (!strcasecmp(c->argv[1]->ptr,"kill")) {
+    } else if (!strcasecmp(c->argv[1]->ptr,"kill")) { // client kill 关闭客户端
         /* CLIENT KILL <ip:port>
          * CLIENT KILL <option> [value] ... <option> [value] */
         char *addr = NULL;
@@ -1802,10 +1803,14 @@ int checkClientOutputBufferLimits(client *c) {
     /* For the purpose of output buffer limiting, masters are handled
      * like normal clients. */
     if (class == CLIENT_TYPE_MASTER) class = CLIENT_TYPE_NORMAL;
-
+    // 超过硬性限制，立即关闭客户端
     if (server.client_obuf_limits[class].hard_limit_bytes &&
         used_mem >= server.client_obuf_limits[class].hard_limit_bytes)
         hard = 1;
+
+    // 超过软性限制，没有超过硬性限制，obuf_soft_limit_reached_time属性记录客户端达到软性限制的起始时间；
+    // 之后服务器继续监视客户端，如果输出缓冲区的大小超出软性限制，并且持续时间超过服务器设定的时长，那么服务器将关闭客户端；
+    // 相反，在指定时间之内，不再超出软性限制，客户端就不会被关闭，并且obuf_soft_limit_reached_time属性的值也会被清0
     if (server.client_obuf_limits[class].soft_limit_bytes &&
         used_mem >= server.client_obuf_limits[class].soft_limit_bytes)
         soft = 1;
@@ -1813,6 +1818,7 @@ int checkClientOutputBufferLimits(client *c) {
     /* We need to check if the soft limit is reached continuously for the
      * specified amount of seconds. */
     if (soft) {
+        // obuf_soft_limit_reached_time属性记录客户端达到软性限制的起始时间
         if (c->obuf_soft_limit_reached_time == 0) {
             c->obuf_soft_limit_reached_time = server.unixtime;
             soft = 0; /* First time we see the soft limit reached */
@@ -1842,6 +1848,7 @@ int checkClientOutputBufferLimits(client *c) {
 void asyncCloseClientOnOutputBufferLimitReached(client *c) {
     serverAssert(c->reply_bytes < SIZE_MAX-(1024*64));
     if (c->reply_bytes == 0 || c->flags & CLIENT_CLOSE_ASAP) return;
+    // 要发送给客户端的命令回复的大小超过了输出缓冲区的限制大小，关闭客户端
     if (checkClientOutputBufferLimits(c)) {
         sds client = catClientInfoString(sdsempty(),c);
 

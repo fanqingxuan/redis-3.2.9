@@ -1113,6 +1113,7 @@ int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
     if (server.watchdog_period) watchdogScheduleSignal(server.watchdog_period);
 
     /* Update the time cache. */
+    // 更新时间
     updateCachedTime();
 
     run_with_period(100) {
