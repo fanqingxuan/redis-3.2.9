@@ -33,18 +33,25 @@
 #include <stdint.h>
 
 typedef struct intset {
-    uint32_t encoding;
-    uint32_t length;
-    int8_t contents[];
+    uint32_t encoding;// 编码方式
+    uint32_t length;// 集合元素数量
+    int8_t contents[];// 保存元素的数组，各个数据项在数组中按从小到大排序；类型虽然是int8_t，但存储的真正类型取决于encoding属性的值
 } intset;
-
+// 创建一个新的整数集合
 intset *intsetNew(void);
+// 将值添加到集合里
 intset *intsetAdd(intset *is, int64_t value, uint8_t *success);
+// 从集合中移除元素
 intset *intsetRemove(intset *is, int64_t value, int *success);
+// 查找元素是否在集合里
 uint8_t intsetFind(intset *is, int64_t value);
+// 从集合中随机返回一个元素
 int64_t intsetRandom(intset *is);
+// 获取指定索引位置上的元素
 uint8_t intsetGet(intset *is, uint32_t pos, int64_t *value);
+// 返回集合中元素个数
 uint32_t intsetLen(intset *is);
+// 返回集合占用的内存字节数
 size_t intsetBlobLen(intset *is);
 
 #ifdef REDIS_TEST

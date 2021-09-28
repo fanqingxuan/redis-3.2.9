@@ -161,15 +161,19 @@ static intset *intsetUpgradeAndAdd(intset *is, int64_t value) {
     int prepend = value < 0 ? 1 : 0;
 
     /* First set new encoding and resize */
-    is->encoding = intrev32ifbe(newenc);
-    is = intsetResize(is,intrev32ifbe(is->length)+1);
+    is->encoding = intrev32ifbe(newenc);// 修改新的编码属性
+    is = intsetResize(is,intrev32ifbe(is->length)+1);// 空间重分配
 
     /* Upgrade back-to-front so we don't overwrite values.
      * Note that the "prepend" variable is used to make sure we have an empty
      * space at either the beginning or the end of the intset. */
+    // 对原有的集合元素进行inset contents数组重新赋值，从最大索引开始
     while(length--)
         _intsetSet(is,length+prepend,_intsetGetEncoded(is,length,curenc));
 
+    // 将新元素添加进集合
+    // 触发升级的新元素的值总是比集合现有所有元素的长度都大，即新值要么大于所有元素的值，要么小于所有元素的值
+    // 所以这个新值要么就放置在底层数组最开头(索引0),要么就放置在底层数组最末尾(索引length-1)
     /* Set the value at the beginning or the end. */
     if (prepend)
         _intsetSet(is,0,value);
@@ -209,6 +213,8 @@ intset *intsetAdd(intset *is, int64_t value, uint8_t *success) {
     /* Upgrade encoding if necessary. If we need to upgrade, we know that
      * this value should be either appended (if > 0) or prepended (if < 0),
      * because it lies outside the range of existing values. */
+    // 当向一个底层类型较小的数组集合中添加一个大的类型整数值时，整数集合中所有元素都会被转换成大的类型
+    // 例如，向一个底层为int16_t数组的集合添加int64_t类型的数值，则集合中所有元素都会被转换成int64_t
     if (valenc > intrev32ifbe(is->encoding)) {
         /* This always succeeds, so we don't need to curry *success. */
         return intsetUpgradeAndAdd(is,value);
