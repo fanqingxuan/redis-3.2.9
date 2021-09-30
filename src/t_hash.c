@@ -42,6 +42,7 @@ void hashTypeTryConversion(robj *o, robj **argv, int start, int end) {
 
     if (o->encoding != OBJ_ENCODING_ZIPLIST) return;
 
+    // 如果hash键和值有任意值长度大于server.hash_max_ziplist_value(默认64个字节),hash编码类型转成hashtable编码
     for (i = start; i <= end; i++) {
         if (sdsEncodedObject(argv[i]) &&
             sdslen(argv[i]->ptr) > server.hash_max_ziplist_value)
@@ -226,6 +227,7 @@ int hashTypeSet(robj *o, robj *field, robj *value) {
         decrRefCount(value);
 
         /* Check if the ziplist needs to be converted to a hash table */
+        // 如果hash对象保存的键值对数量大于server.hash_max_ziplist_entries(默认512),则hash编码类型转成hashtable
         if (hashTypeLength(o) > server.hash_max_ziplist_entries)
             hashTypeConvert(o, OBJ_ENCODING_HT);
     } else if (o->encoding == OBJ_ENCODING_HT) {

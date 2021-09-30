@@ -53,6 +53,7 @@ robj *setTypeCreate(robj *value) {
 int setTypeAdd(robj *subject, robj *value) {
     long long llval;
     if (subject->encoding == OBJ_ENCODING_HT) {
+        // 以新元素为键，NULL为值，将键值对添加到字段里面
         if (dictAdd(subject->ptr,value,NULL) == DICT_OK) {
             incrRefCount(value);
             return 1;
@@ -60,20 +61,23 @@ int setTypeAdd(robj *subject, robj *value) {
     } else if (subject->encoding == OBJ_ENCODING_INTSET) {
         if (isObjectRepresentableAsLongLong(value,&llval) == C_OK) {
             uint8_t success = 0;
-            subject->ptr = intsetAdd(subject->ptr,llval,&success);
+            subject->ptr = intsetAdd(subject->ptr,llval,&success);// 将新元素添加到整数集合中
             if (success) {
                 /* Convert to regular set when the intset contains
                  * too many entries. */
+                // 如果集合对象保存的元素数量大于server.set_max_intset_entries(默认512)，则集合编码类型由intset转成hashtable
                 if (intsetLen(subject->ptr) > server.set_max_intset_entries)
                     setTypeConvert(subject,OBJ_ENCODING_HT);
                 return 1;
             }
         } else {
             /* Failed to get integer from object, convert to regular set. */
+            // 如果保存的元素有非整型，则集合编码类型由intset转成hashtable
             setTypeConvert(subject,OBJ_ENCODING_HT);
 
             /* The set *was* an intset and this value is not integer
              * encodable, so dictAdd should always work. */
+            // 以新元素为键，NULL为值，将键值对添加到字段里面
             serverAssertWithInfo(NULL,value,
                                 dictAdd(subject->ptr,value,NULL) == DICT_OK);
             incrRefCount(value);
