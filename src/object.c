@@ -36,6 +36,7 @@
 #define strtold(a,b) ((long double)strtod((a),(b)))
 #endif
 
+// 创建raw编码类型的对象
 robj *createObject(int type, void *ptr) {
     robj *o = zmalloc(sizeof(*o));
     o->type = type;
@@ -50,6 +51,7 @@ robj *createObject(int type, void *ptr) {
 
 /* Create a string object with encoding OBJ_ENCODING_RAW, that is a plain
  * string object where o->ptr points to a proper sds string. */
+// 创建raw编码类型的字符串对象
 robj *createRawStringObject(const char *ptr, size_t len) {
     return createObject(OBJ_STRING,sdsnewlen(ptr,len));
 }
@@ -57,6 +59,7 @@ robj *createRawStringObject(const char *ptr, size_t len) {
 /* Create a string object with encoding OBJ_ENCODING_EMBSTR, that is
  * an object where the sds string is actually an unmodifiable string
  * allocated in the same chunk as the object itself. */
+// 创建embstr编码类型的字符串对象
 robj *createEmbeddedStringObject(const char *ptr, size_t len) {
     robj *o = zmalloc(sizeof(robj)+sizeof(struct sdshdr8)+len+1);
     struct sdshdr8 *sh = (void*)(o+1);
@@ -93,17 +96,20 @@ robj *createStringObject(const char *ptr, size_t len) {
         return createRawStringObject(ptr,len);
 }
 
+// 创建整形对象
 robj *createStringObjectFromLongLong(long long value) {
     robj *o;
+    // 如果整数小于10000,只是增加共享对象的引用值
     if (value >= 0 && value < OBJ_SHARED_INTEGERS) {
         incrRefCount(shared.integers[value]);
         o = shared.integers[value];
     } else {
+        // 如果整数值在长整型范围内，则创建编码类型是int的字符串对象
         if (value >= LONG_MIN && value <= LONG_MAX) {
             o = createObject(OBJ_STRING, NULL);
             o->encoding = OBJ_ENCODING_INT;
             o->ptr = (void*)((long)value);
-        } else {
+        } else {// 创建raw编码的字符串对象
             o = createObject(OBJ_STRING,sdsfromlonglong(value));
         }
     }
@@ -161,6 +167,7 @@ robj *createStringObjectFromLongDouble(long double value, int humanfriendly) {
  * will always result in a fresh object that is unshared (refcount == 1).
  *
  * The resulting object always has refcount set to 1. */
+// 复制一个新字符串对象，引用计数=1
 robj *dupStringObject(robj *o) {
     robj *d;
 
@@ -293,6 +300,7 @@ void freeHashObject(robj *o) {
     }
 }
 
+// 增加对象的引用
 void incrRefCount(robj *o) {
     o->refcount++;
 }
