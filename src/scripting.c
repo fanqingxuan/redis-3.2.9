@@ -123,7 +123,7 @@ void sha1hex(char *digest, char *script, size_t len) {
  * Errors are returned as a table with a single 'err' field set to the
  * error string.
  */
-
+// 接收一个 Redis 协议格式的 Redis 回复，并将它转换为 Lua 类型的值
 char *redisProtocolToLuaType(lua_State *lua, char* reply) {
     char *p = reply;
 
@@ -342,7 +342,7 @@ void luaReplyToRedisReply(client *c, lua_State *lua) {
 /* ---------------------------------------------------------------------------
  * Lua redis.* functions implementations.
  * ------------------------------------------------------------------------- */
-
+// 用于在 Lua 环境中执行 Redis 命令
 #define LUA_CMD_OBJCACHE_SIZE 32
 #define LUA_CMD_OBJCACHE_MAX_LEN 64
 int luaRedisGenericCommand(lua_State *lua, int raise_error) {
@@ -805,7 +805,7 @@ int luaLogCommand(lua_State *lua) {
 /* ---------------------------------------------------------------------------
  * Lua engine initialization and reset.
  * ------------------------------------------------------------------------- */
-
+// 将指定函数以指定名字载入到 Lua 环境，并调用
 void luaLoadLib(lua_State *lua, const char *libname, lua_CFunction luafunc) {
   lua_pushcfunction(lua, luafunc);
   lua_pushstring(lua, libname);
@@ -816,16 +816,25 @@ LUALIB_API int (luaopen_cjson) (lua_State *L);
 LUALIB_API int (luaopen_struct) (lua_State *L);
 LUALIB_API int (luaopen_cmsgpack) (lua_State *L);
 LUALIB_API int (luaopen_bit) (lua_State *L);
-
+// 指定的库载入到 Lua 环境中
 void luaLoadLibraries(lua_State *lua) {
+    // 基础库
     luaLoadLib(lua, "", luaopen_base);
+    // table库
     luaLoadLib(lua, LUA_TABLIBNAME, luaopen_table);
+    // 字符串库
     luaLoadLib(lua, LUA_STRLIBNAME, luaopen_string);
+    // 数学库
     luaLoadLib(lua, LUA_MATHLIBNAME, luaopen_math);
+    // debug库
     luaLoadLib(lua, LUA_DBLIBNAME, luaopen_debug);
+    // cjson库
     luaLoadLib(lua, "cjson", luaopen_cjson);
+    // struct库
     luaLoadLib(lua, "struct", luaopen_struct);
+    // cmsgpack库
     luaLoadLib(lua, "cmsgpack", luaopen_cmsgpack);
+    // bit库
     luaLoadLib(lua, "bit", luaopen_bit);
 
 #if 0 /* Stuff that we don't load currently, for sandboxing concerns. */
@@ -836,9 +845,12 @@ void luaLoadLibraries(lua_State *lua) {
 
 /* Remove a functions that we don't want to expose to the Redis scripting
  * environment. */
+// 移除所有不想暴露给 Redis 脚本的函数
 void luaRemoveUnsupportedFunctions(lua_State *lua) {
+    // 屏蔽loadfile
     lua_pushnil(lua);
     lua_setglobal(lua,"loadfile");
+    // 屏蔽dofile
     lua_pushnil(lua);
     lua_setglobal(lua,"dofile");
 }
@@ -892,7 +904,9 @@ void scriptingEnableGlobalsProtection(lua_State *lua) {
  * in order to reset the Lua scripting environment.
  *
  * However it is simpler to just call scriptingReset() that does just that. */
+// 初始化脚本环境
 void scriptingInit(int setup) {
+    // 创建一个lua脚本环境
     lua_State *lua = lua_open();
 
     if (setup) {
@@ -902,29 +916,35 @@ void scriptingInit(int setup) {
         server.lua_always_replicate_commands = 0; /* Only DEBUG can change it.*/
         ldbInit();
     }
-
+    // 载入内置函数库
     luaLoadLibraries(lua);
+    // 屏蔽所有不想暴露给脚本环境的函数
     luaRemoveUnsupportedFunctions(lua);
 
     /* Initialize a dictionary we use to map SHAs to scripts.
      * This is useful for replication, as we need to replicate EVALSHA
      * as EVAL, so we need to remember the associated script. */
+    // 创建一个字典，用于将 SHA 校验码映射到脚本
     server.lua_scripts = dictCreate(&shaScriptObjectDictType,NULL);
 
     /* Register the redis commands table and fields */
+    // 创建 lua 表，并以给定名称将 C 函数注册到表格上
     lua_newtable(lua);
 
     /* redis.call */
+    /* 注册 redis.call */
     lua_pushstring(lua,"call");
     lua_pushcfunction(lua,luaRedisCallCommand);
     lua_settable(lua,-3);
 
     /* redis.pcall */
+    /* 注册 redis.pcall */
     lua_pushstring(lua,"pcall");
     lua_pushcfunction(lua,luaRedisPCallCommand);
     lua_settable(lua,-3);
 
     /* redis.log and log levels. */
+    /* 注册 redis.log */
     lua_pushstring(lua,"log");
     lua_pushcfunction(lua,luaLogCommand);
     lua_settable(lua,-3);
@@ -997,6 +1017,12 @@ void scriptingInit(int setup) {
     /* Finally set the table as 'redis' global var. */
     lua_setglobal(lua,"redis");
 
+    /*  
+     *
+     * 使用 Redis 自己的函数来替换 Lua 原来的 math.random 和 math.randomseed 实现
+     *
+     * 使得随机数的生成带有确定性：对于同一个 seed ，总是产生相同的随机数序列
+     */
     /* Replace math.random and math.randomseed with our implementations. */
     lua_getglobal(lua,"math");
 
@@ -1026,6 +1052,7 @@ void scriptingInit(int setup) {
      * Note that when the error is in the C function we want to report the
      * information about the caller, that's what makes sense from the point
      * of view of the user debugging a script. */
+    // 创建一个用于报告 pcall 错误的报告函数
     {
         char *errh_func =       "local dbg = debug\n"
                                 "function __redis__err__handler(err)\n"
@@ -1048,6 +1075,7 @@ void scriptingInit(int setup) {
      * Note: there is no need to create it again when this function is called
      * by scriptingReset(). */
     if (server.lua_client == NULL) {
+        // 创建一个无网络链接的伪客户端来专门执行 Lua 脚本中的 Redis 命令
         server.lua_client = createClient(-1);
         server.lua_client->flags |= CLIENT_LUA;
     }
@@ -1055,21 +1083,25 @@ void scriptingInit(int setup) {
     /* Lua beginners often don't use "local", this is likely to introduce
      * subtle bugs in their code. To prevent problems we protect accesses
      * to global variables. */
+    // 为了避免全局变量被意外地修改，保护全局变量
     scriptingEnableGlobalsProtection(lua);
-
+    // 将 Lua 环境赋值到服务器属性中
     server.lua = lua;
 }
 
 /* Release resources related to Lua scripting.
  * This function is used in order to reset the scripting environment. */
+// 重置 Lua 脚本环境
 void scriptingRelease(void) {
+    // 释放记录脚本的字典
     dictRelease(server.lua_scripts);
+    // 关闭 Lua 环境
     lua_close(server.lua);
 }
-
+// 重置脚本环境
 void scriptingReset(void) {
-    scriptingRelease();
-    scriptingInit(0);
+    scriptingRelease();// 释放环境
+    scriptingInit(0);// 初始化环境
 }
 
 /* Set an array of Redis String Objects as a Lua array (table) stored into a

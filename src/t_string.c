@@ -291,7 +291,7 @@ void mgetCommand(client *c) {
         if (o == NULL) {
             addReply(c,shared.nullbulk);
         } else {
-            if (o->type != OBJ_STRING) {
+            if (o->type != OBJ_STRING) {// 检查key对应的值对象是否是string，是则执行mget，否则返回类型错误
                 addReply(c,shared.nullbulk);
             } else {
                 addReplyBulk(c,o);
