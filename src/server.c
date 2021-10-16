@@ -4033,6 +4033,7 @@ int main(int argc, char **argv) {
      * data structures with master nodes to monitor. */
     // 如果开启sentinel模式，初始化sentinel配置
     if (server.sentinel_mode) {
+        // sentinel配置加载，包括端口是26379
         initSentinelConfig();
         initSentinel();
     }

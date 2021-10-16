@@ -46,7 +46,9 @@ extern char **environ;
 
 /* Address object, used to describe an ip:port pair. */
 typedef struct sentinelAddr {
+    // 实例的ip地址
     char *ip;
+    // 实例的端口
     int port;
 } sentinelAddr;
 
@@ -161,10 +163,15 @@ typedef struct instanceLink {
 } instanceLink;
 
 typedef struct sentinelRedisInstance {
+    // 主服务器实例结构值是SRI_MASTER  
+    // 从服务器实例结构值是SRI_SLAVE
     int flags;      /* See SRI_... defines */
+    // 主服务器的名称是由Sentinel配置文件设置的
+    // 从服务器实例结构的名称是服务器IP地址和端口号自动设置
     char *name;     /* Master name from the point of view of this sentinel. */
     char *runid;    /* Run ID of this instance, or unique ID if is a Sentinel.*/
     uint64_t config_epoch;  /* Configuration epoch. */
+    // 实例的地址
     sentinelAddr *addr; /* Master host. */
     instanceLink *link; /* Link to the instance, may be shared for Sentinels. */
     mstime_t last_pub_time;   /* Last time we sent hello via Pub/Sub. */
@@ -189,6 +196,7 @@ typedef struct sentinelRedisInstance {
 
     /* Master specific. */
     dict *sentinels;    /* Other sentinels monitoring the same master. */
+    // 保存了主服务器下的从服务器结构
     dict *slaves;       /* Slaves for this master instance. */
     unsigned int quorum;/* Number of sentinels that need to agree on failure. */
     int parallel_syncs; /* How many slaves to reconfigure at same time. */
@@ -199,9 +207,13 @@ typedef struct sentinelRedisInstance {
     int slave_priority; /* Slave priority according to its INFO output. */
     mstime_t slave_reconf_sent_time; /* Time at which we sent SLAVE OF <new> */
     struct sentinelRedisInstance *master; /* Master instance if it's slave. */
+    // 从服务器对应的主服务IP
     char *slave_master_host;    /* Master host as reported by INFO */
+    // 从服务器对应的主服务器端口
     int slave_master_port;      /* Master port as reported by INFO */
+    // 主从服务器连接状态
     int slave_master_link_status; /* Master link status as reported by INFO */
+    // 从服务器的复制偏移量
     unsigned long long slave_repl_offset; /* Slave replication offset. */
     /* Failover */
     char *leader;       /* If this is a master instance, this is the runid of
@@ -228,13 +240,21 @@ typedef struct sentinelRedisInstance {
 struct sentinelState {
     char myid[CONFIG_RUN_ID_SIZE+1]; /* This sentinel ID. */
     uint64_t current_epoch;         /* Current epoch. */
+    // 保存了所有被这个sentinel监视的主服务器
+    // 字典的键是主服务器名字
+    // 字典的值是一个指向sentinelRedisInstance结构的指针
     dict *masters;      /* Dictionary of master sentinelRedisInstances.
                            Key is the instance name, value is the
                            sentinelRedisInstance structure pointer. */
+    // 是否进入了TILT模式
     int tilt;           /* Are we in TILT mode? */
+    // 目前正在执行的脚步的数量
     int running_scripts;    /* Number of scripts in execution right now. */
+    // 进入TILT模式的时间
     mstime_t tilt_start_time;       /* When TITL started. */
+    // 最后一次执行时间处理器的时间
     mstime_t previous_time;         /* Last time we ran the time handler. */
+    // 一个FIFO队列，包含了所有需要执行的用户脚本
     list *scripts_queue;            /* Queue of user scripts to execute. */
     char *announce_ip;  /* IP addr that is gossiped to other sentinels if
                            not NULL. */
@@ -448,6 +468,7 @@ void initSentinel(void) {
 
     /* Remove usual Redis commands from the command table, then just add
      * the SENTINEL command. */
+    //sentinel模式清空默认加载的commands，然后加载只有serntinel允许的命令
     dictEmpty(server.commands,NULL);
     for (j = 0; j < sizeof(sentinelcmds)/sizeof(sentinelcmds[0]); j++) {
         int retval;
