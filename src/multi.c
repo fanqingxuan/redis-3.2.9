@@ -78,6 +78,7 @@ void discardTransaction(client *c) {
 
 /* Flag the transacation as DIRTY_EXEC so that EXEC will fail.
  * Should be called every time there is an error while queueing a command. */
+// 错误命令或者命令参数不对
 void flagTransaction(client *c) {
     if (c->flags & CLIENT_MULTI)
         c->flags |= CLIENT_DIRTY_EXEC;
@@ -88,6 +89,7 @@ void multiCommand(client *c) {
         addReplyError(c,"MULTI calls can not be nested");
         return;
     }
+    // 打开事务标识
     c->flags |= CLIENT_MULTI;
     addReply(c,shared.ok);
 }
@@ -117,7 +119,7 @@ void execCommand(client *c) {
     int orig_argc;
     struct redisCommand *orig_cmd;
     int must_propagate = 0; /* Need to propagate MULTI/EXEC to AOF / slaves? */
-
+    // 没有打开事务直接执行exec命令，则报错
     if (!(c->flags & CLIENT_MULTI)) {
         addReplyError(c,"EXEC without MULTI");
         return;
@@ -129,6 +131,7 @@ void execCommand(client *c) {
      * A failed EXEC in the first case returns a multi bulk nil object
      * (technically it is not an error but a special behavior), while
      * in the second an EXECABORT error is returned. */
+    // 被监听的key发生了变化，或者命令参数错误、命令不存在等，放弃事务
     if (c->flags & (CLIENT_DIRTY_CAS|CLIENT_DIRTY_EXEC)) {
         addReply(c, c->flags & CLIENT_DIRTY_EXEC ? shared.execaborterr :
                                                   shared.nullmultibulk);
@@ -258,6 +261,10 @@ void unwatchAllKeys(client *c) {
 
 /* "Touch" a key, so that if this key is being WATCHed by some client the
  * next EXEC will fail. */
+// 所有对数据库进行修改的命令，都会调用该方法
+// 对watched_keys字典进行检查
+// 如果有客户端watch监视当前操作key,则监视的client标识标记为CLIENT_DIRTY_CAS
+// exec命令执行时,发现如果监视的key被标识为CLIENT_DIRTY_CAS，则事务执行失败
 void touchWatchedKey(redisDb *db, robj *key) {
     list *clients;
     listIter li;
@@ -306,7 +313,7 @@ void touchWatchedKeysOnFlush(int dbid) {
 
 void watchCommand(client *c) {
     int j;
-
+    // watch命令不能在事务里面执行
     if (c->flags & CLIENT_MULTI) {
         addReplyError(c,"WATCH inside MULTI is not allowed");
         return;
