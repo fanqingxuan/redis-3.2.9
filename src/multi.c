@@ -131,7 +131,7 @@ void execCommand(client *c) {
      * A failed EXEC in the first case returns a multi bulk nil object
      * (technically it is not an error but a special behavior), while
      * in the second an EXECABORT error is returned. */
-    // 被监听的key发生了变化，或者命令参数错误、命令不存在等，放弃事务
+    // 被监听的key发生了变化，或者命令参数错误、命令不存在等，放弃事务,即事务执行失败
     if (c->flags & (CLIENT_DIRTY_CAS|CLIENT_DIRTY_EXEC)) {
         addReply(c, c->flags & CLIENT_DIRTY_EXEC ? shared.execaborterr :
                                                   shared.nullmultibulk);
