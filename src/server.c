@@ -3441,7 +3441,7 @@ void evictionPoolPopulate(dict *sampledict, dict *keydict, struct evictionPoolEn
     } else {
         samples = zmalloc(sizeof(samples[0])*server.maxmemory_samples);
     }
-
+    // 从缓存对象集合中获取一些样本，并保存在 samples 数组中
     count = dictGetSomeKeys(sampledict,samples,server.maxmemory_samples);
     for (j = 0; j < count; j++) {
         unsigned long long idle;
@@ -3494,6 +3494,15 @@ void evictionPoolPopulate(dict *sampledict, dict *keydict, struct evictionPoolEn
     if (samples != _samples) zfree(samples);
 }
 
+/**
+ * 内存淘汰策略
+ *  1）volatile-lru：从已设置过期时间的数据集（server.db[i].expires）中挑选最近最少使用的数据淘汰。
+ * （2）volatile-ttl：从已设置过期时间的数据集（server.db[i].expires）中挑选将要过期的数据淘汰
+ * （3）volatile-random：从已设置过期时间的数据集（server.db[i].expires）中任意选择数据淘汰
+ * （4）allkeys-lru：从数据集（server.db[i].dict）中挑选最近最少使用的数据淘汰
+ * （5）allkeys-random：从数据集（server.db[i].dict）中任意选择数据淘汰
+ * （6）no-enviction：禁止淘汰数据
+*/
 int freeMemoryIfNeeded(void) {
     size_t mem_used, mem_tofree, mem_freed;
     int slaves = listLength(server.slaves);
@@ -3522,8 +3531,11 @@ int freeMemoryIfNeeded(void) {
     }
 
     /* Check if we are over the memory limit. */
+    //判断已经使用内存是否超过最大使用内存，如果没有超过就返回REDIS_OK
     if (mem_used <= server.maxmemory) return C_OK;
+    //超过了最大使用内存时，就要判断此时redis到底采用的是那种内存释放策略，根据不同的策略，采取不同的手段
 
+    // 若配置淘汰策略是no-enviction策略，则返回REDIS_ERR,然后redis就不再接受任何写命令
     if (server.maxmemory_policy == MAXMEMORY_NO_EVICTION)
         return C_ERR; /* We need to free memory, but policy forbids. */
 
@@ -3531,6 +3543,8 @@ int freeMemoryIfNeeded(void) {
     mem_tofree = mem_used - server.maxmemory;
     mem_freed = 0;
     latencyStartMonitor(latency);
+    // 判断淘汰策略是基于所有的键还是只是基于设置了过期时间的键
+    // 如果是针对所有的键，就从server.db[j].dict中取数据，如果是针对设置了过期时间的键，就从server.db[j].expires中取数据
     while (mem_freed < mem_tofree) {
         int j, k, keys_freed = 0;
 
@@ -3540,17 +3554,18 @@ int freeMemoryIfNeeded(void) {
             dictEntry *de;
             redisDb *db = server.db+j;
             dict *dict;
-
+            // 过期策略是allkeys-lru、allkeys-random,则从server.db[j].dict取数据
             if (server.maxmemory_policy == MAXMEMORY_ALLKEYS_LRU ||
                 server.maxmemory_policy == MAXMEMORY_ALLKEYS_RANDOM)
             {
                 dict = server.db[j].dict;
-            } else {
+            } else {// 否则从server.db[j].expires里面取数据
                 dict = server.db[j].expires;
             }
             if (dictSize(dict) == 0) continue;
 
             /* volatile-random and allkeys-random policy */
+            // 如果是allkeys-random、volatile,则从dict中随机选一个key
             if (server.maxmemory_policy == MAXMEMORY_ALLKEYS_RANDOM ||
                 server.maxmemory_policy == MAXMEMORY_VOLATILE_RANDOM)
             {
@@ -3561,7 +3576,7 @@ int freeMemoryIfNeeded(void) {
             /* volatile-lru and allkeys-lru policy */
             else if (server.maxmemory_policy == MAXMEMORY_ALLKEYS_LRU ||
                 server.maxmemory_policy == MAXMEMORY_VOLATILE_LRU)
-            {
+            {// volatile-lru and allkeys-lru策略
                 struct evictionPoolEntry *pool = db->eviction_pool;
 
                 while(bestkey == NULL) {
@@ -3595,6 +3610,7 @@ int freeMemoryIfNeeded(void) {
             }
 
             /* volatile-ttl */
+            // 淘汰将要过期的数据
             else if (server.maxmemory_policy == MAXMEMORY_VOLATILE_TTL) {
                 for (k = 0; k < server.maxmemory_samples; k++) {
                     sds thiskey;

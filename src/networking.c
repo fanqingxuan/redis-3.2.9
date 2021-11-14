@@ -681,7 +681,7 @@ static void acceptCommonHandler(int fd, int flags, char *ip) {
             return;
         }
     }
-
+    // 统计连接数
     server.stat_numconnections++;
     c->flags |= flags;
 }
@@ -1071,6 +1071,7 @@ int processInlineBuffer(client *c) {
         newline--;
 
     /* Split the input buffer up to the \r\n */
+    // 缓冲区根据\r\n拆分字符串为sds对象
     querylen = newline-(c->querybuf);
     aux = sdsnewlen(c->querybuf,querylen);
     argv = sdssplitargs(aux,&argc);
@@ -1090,13 +1091,15 @@ int processInlineBuffer(client *c) {
     /* Leave data after the first line of the query in the buffer */
     sdsrange(c->querybuf,querylen+2,-1);
 
+    // 最终将输入缓冲区解析成client对象的argc、argv参数的数据，供之后命令使用
     /* Setup argv array on client structure */
     if (argc) {
         if (c->argv) zfree(c->argv);
-        c->argv = zmalloc(sizeof(robj*)*argc);
+        c->argv = zmalloc(sizeof(robj*)*argc);//分配client对象argv参数内存
     }
 
     /* Create redis objects for all arguments. */
+    // 创建client参数的argv数组，数组每一项都是一个string对象
     for (c->argc = 0, j = 0; j < argc; j++) {
         if (sdslen(argv[j])) {
             c->argv[c->argc] = createObject(OBJ_STRING,argv[j]);
@@ -1260,9 +1263,12 @@ int processMultibulkBuffer(client *c) {
     return C_ERR;
 }
 
+// 主要是将输入缓冲区中的数据解析成对应的命令
+// 根据命令类型是 PROTO_REQ_MULTIBULK 还是 PROTO_REQ_INLINE，来分别调用 processInlineBuffer 和 processMultibulkBuffer 方法来解析命令
 void processInputBuffer(client *c) {
     server.current_client = c;
     /* Keep processing while there is something in the input buffer */
+    // 当缓冲区中还有数据时就一直处理
     while(sdslen(c->querybuf)) {
         /* Return if clients are paused. */
         if (!(c->flags & CLIENT_SLAVE) && clientsArePaused()) break;
@@ -1278,6 +1284,7 @@ void processInputBuffer(client *c) {
         if (c->flags & (CLIENT_CLOSE_AFTER_REPLY|CLIENT_CLOSE_ASAP)) break;
 
         /* Determine request type when unknown. */
+        // 识别请求类型
         if (!c->reqtype) {
             if (c->querybuf[0] == '*') {
                 c->reqtype = PROTO_REQ_MULTIBULK;
@@ -1309,6 +1316,7 @@ void processInputBuffer(client *c) {
     server.current_client = NULL;
 }
 
+// 读取socket数据到输入缓冲区
 void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
     client *c = (client*) privdata;
     int nread, readlen;
@@ -1333,9 +1341,12 @@ void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
 
     qblen = sdslen(c->querybuf);
     if (c->querybuf_peak < qblen) c->querybuf_peak = qblen;
+    // 分配空间
     c->querybuf = sdsMakeRoomFor(c->querybuf, readlen);
+    // 从 fd 对应的socket中读取到 client 中的 querybuf 输入缓冲区
     nread = read(fd, c->querybuf+qblen, readlen);
     if (nread == -1) {
+        // 读取出错，关闭客户端
         if (errno == EAGAIN) {
             return;
         } else {
@@ -1344,11 +1355,12 @@ void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
             return;
         }
     } else if (nread == 0) {
+        // 客户端主动关闭
         serverLog(LL_VERBOSE, "Client closed connection");
         freeClient(c);
         return;
     }
-
+    // 增加已经读取的字节数
     sdsIncrLen(c->querybuf,nread);
     // 更新客户端与服务器最后一次互动时间
     c->lastinteraction = server.unixtime;
@@ -1365,6 +1377,7 @@ void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
         freeClient(c);
         return;
     }
+    // 解析输入命令
     processInputBuffer(c);
 }
 
