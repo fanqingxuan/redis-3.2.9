@@ -670,17 +670,28 @@ dictType replScriptCacheDictType = {
     NULL                        /* val destructor */
 };
 
+/*
+ * 
+ * 检查字典的使用率是否低于系统允许的最小比率
+ *
+ * 是的话返回 1 ，否则返回 0 。
+ */
 int htNeedsResize(dict *dict) {
     long long size, used;
-
+    // 哈希表大小
     size = dictSlots(dict);
+    // 哈希表已用节点数量
     used = dictSize(dict);
+    // 当哈希表的大小大于 DICT_HT_INITIAL_SIZE
+    // 并且字典的填充率低于 REDIS_HT_MINFILL 时
+    // 返回 1
     return (size > DICT_HT_INITIAL_SIZE &&
             (used*100/size < HASHTABLE_MIN_FILL));
 }
 
 /* If the percentage of used slots in the HT reaches HASHTABLE_MIN_FILL
  * we resize the hash table to save memory */
+// 收缩rehash
 void tryResizeHashTables(int dbid) {
     if (htNeedsResize(server.db[dbid].dict))
         dictResize(server.db[dbid].dict);
