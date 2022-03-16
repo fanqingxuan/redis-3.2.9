@@ -529,9 +529,9 @@ struct evictionPoolEntry {
  * database. The database number is the 'id' field in the structure. */
 typedef struct redisDb {
     dict *dict;                 /* 数据库键空间，保存了数据库中所有的键值对 */
-    dict *expires;              /* Timeout of keys with a timeout set */
-    dict *blocking_keys;        /* Keys with clients waiting for data (BLPOP) */
-    dict *ready_keys;           /* Blocked keys that received a PUSH */
+    dict *expires;              /* 设置有过期时间的键值对 */
+    dict *blocking_keys;        /* brpoplpush、brpop、blpop阻塞状态的key */
+    dict *ready_keys;           /* 收到push命令的block状态的key */
     dict *watched_keys;         /* WATCHED keys for MULTI/EXEC CAS */
     struct evictionPoolEntry *eviction_pool;    /* Eviction pool of keys */
 

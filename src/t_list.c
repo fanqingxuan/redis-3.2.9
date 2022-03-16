@@ -688,9 +688,11 @@ void signalListAsReady(redisDb *db, robj *key) {
     readyList *rl;
 
     /* No clients blocking for this key? No need to queue it. */
+    // 检查key是否在block里面存在
     if (dictFind(db->blocking_keys,key) == NULL) return;
 
     /* Key was already signaled? No need to queue it again. */
+    // key已经signaled
     if (dictFind(db->ready_keys,key) != NULL) return;
 
     /* Ok, we need to queue this key into server.ready_keys. */
@@ -704,6 +706,7 @@ void signalListAsReady(redisDb *db, robj *key) {
      * to avoid adding it multiple times into a list with a simple O(1)
      * check. */
     incrRefCount(key);
+    // 将key放入ready_keys里面，以备handleClientsBlockedOnLists处理
     serverAssert(dictAdd(db->ready_keys,key,NULL) == DICT_OK);
 }
 

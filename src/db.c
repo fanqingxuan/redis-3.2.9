@@ -164,6 +164,7 @@ void dbAdd(redisDb *db, robj *key, robj *val) {
     int retval = dictAdd(db->dict, copy, val);
 
     serverAssertWithInfo(NULL,key,retval == DICT_OK);
+    //如果val是个列表，检查并将block的key放入ready_keys里
     if (val->type == OBJ_LIST) signalListAsReady(db, key);
     if (server.cluster_enabled) slotToKeyAdd(key);
  }
