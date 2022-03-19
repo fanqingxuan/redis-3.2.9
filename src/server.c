@@ -2417,7 +2417,7 @@ int processCommand(client *c) {
             (char*)c->argv[0]->ptr);
         return C_OK;
     } else if ((c->cmd->arity > 0 && c->cmd->arity != c->argc) ||
-               (c->argc < -c->cmd->arity)) {
+               (c->argc < -c->cmd->arity)) {// 传递的参数个数少于命令要求参数个数
         flagTransaction(c);
         addReplyErrorFormat(c,"wrong number of arguments for '%s' command",
             c->cmd->name);
@@ -2482,6 +2482,7 @@ int processCommand(client *c) {
 
     /* Don't accept write commands if there are problems persisting on disk
      * and if this is a master instance. */
+    // 如果保存到磁盘失败，则禁止主库执行ping之外的写命令
     if (((server.stop_writes_on_bgsave_err &&
           server.saveparamslen > 0 &&
           server.lastbgsave_status == C_ERR) ||
@@ -2516,6 +2517,7 @@ int processCommand(client *c) {
 
     /* Don't accept write commands if this is a read only slave. But
      * accept write commands if this is our master. */
+    // cluster从库不执行写命令
     if (server.masterhost && server.repl_slave_ro &&
         !(c->flags & CLIENT_MASTER) &&
         c->cmd->flags & CMD_WRITE)
@@ -2570,6 +2572,7 @@ int processCommand(client *c) {
     }
 
     /* Exec the command */
+    // 已开始事务的客户端，若当前执行的非exec、discard、multi、watch命令，则将命令放入MULTI commands队列里面
     if (c->flags & CLIENT_MULTI &&
         c->cmd->proc != execCommand && c->cmd->proc != discardCommand &&
         c->cmd->proc != multiCommand && c->cmd->proc != watchCommand)

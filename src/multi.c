@@ -209,6 +209,7 @@ void watchForKey(client *c, robj *key) {
     watchedKey *wk;
 
     /* Check if we are already watching for this key */
+    // 检查当前客户端是否已经watch过这个key，如果已经watch过，则不再添加watch
     listRewind(c->watched_keys,&li);
     while((ln = listNext(&li))) {
         wk = listNodeValue(ln);
