@@ -706,10 +706,11 @@ void tryResizeHashTables(int dbid) {
  *
  * The function returns 1 if some rehashing was performed, otherwise 0
  * is returned. */
+// 扩容rehash
 int incrementallyRehash(int dbid) {
     /* Keys dictionary */
-    if (dictIsRehashing(server.db[dbid].dict)) {
-        dictRehashMilliseconds(server.db[dbid].dict,1);
+    if (dictIsRehashing(server.db[dbid].dict)) {// 正在rehash
+        dictRehashMilliseconds(server.db[dbid].dict,1);// 在1毫秒的时间片内，执行若干次dictRehash操作，直到所有数据都已经重哈希， 或者执行时间超过1毫秒的时间片
         return 1; /* already used our millisecond for this loop... */
     }
     /* Expires */
@@ -726,7 +727,9 @@ int incrementallyRehash(int dbid) {
  * memory pages are copied). The goal of this function is to update the ability
  * for dict.c to resize the hash tables accordingly to the fact we have o not
  * running childs. */
+// 启用或禁用 rehash 扩容功能
 void updateDictResizePolicy(void) {
+    //没有 RDB 子进程，并且也没有 AOF 子进程 才允许rehash
     if (server.rdb_child_pid == -1 && server.aof_child_pid == -1)
         dictEnableResize();
     else
