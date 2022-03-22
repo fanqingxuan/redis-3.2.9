@@ -158,7 +158,8 @@ void execCommand(client *c) {
             execCommandPropagateMulti(c);
             must_propagate = 1;
         }
-
+        // mstate.commands队列里面的命令会依次执行
+        // 返回每一个命令的输出，即使当前命令执行错误，并不会影响后面的命令执行
         call(c,CMD_CALL_FULL);
 
         /* Commands may alter argc/argv, restore mstate. */

@@ -194,7 +194,7 @@ void setKey(redisDb *db, robj *key, robj *val) {
         dbOverwrite(db,key,val);
     }
     incrRefCount(val);
-    removeExpire(db,key);
+    removeExpire(db,key);// 移除过期时间
     signalModifiedKey(db,key);
 }
 
