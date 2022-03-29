@@ -866,6 +866,7 @@ long long getExpire(redisDb *db, robj *key) {
     dictEntry *de;
 
     /* No expire? return ASAP */
+    // 数据库过期键expires大小为空或者查找的键不在过期键expires里面，返回-1
     if (dictSize(db->expires) == 0 ||
        (de = dictFind(db->expires,key->ptr)) == NULL) return -1;
 
@@ -891,6 +892,7 @@ void propagateExpire(redisDb *db, robj *key) {
     incrRefCount(argv[0]);
     incrRefCount(argv[1]);
 
+    // 开启aof的话，aof文件追加del命令
     if (server.aof_state != AOF_OFF)
         feedAppendOnlyFile(server.delCommand,db->id,argv,2);
     replicationFeedSlaves(server.slaves,db->id,argv,2);
@@ -946,7 +948,7 @@ int expireIfNeeded(redisDb *db, robj *key) {
     // 如果开启AOF的话，追加DEL命令到AOF文件
     
     propagateExpire(db,key);
-
+    // 发送通知
     notifyKeyspaceEvent(NOTIFY_EXPIRED,
         "expired",key,db->id);
 }
@@ -1028,6 +1030,7 @@ void ttlGenericCommand(client *c, int output_ms) {
     long long expire, ttl = -1;
 
     /* If the key does not exist at all, return -2 */
+    // 键不存在，返回-2
     if (lookupKeyReadWithFlags(c->db,c->argv[1],LOOKUP_NOTOUCH) == NULL) {
         addReplyLongLong(c,-2);
         return;
@@ -1039,6 +1042,7 @@ void ttlGenericCommand(client *c, int output_ms) {
         ttl = expire-mstime();
         if (ttl < 0) ttl = 0;
     }
+    // -1表示永不过期
     if (ttl == -1) {
         addReplyLongLong(c,-1);
     } else {
@@ -1058,13 +1062,13 @@ void persistCommand(client *c) {
     dictEntry *de;
 
     de = dictFind(c->db->dict,c->argv[1]->ptr);
-    if (de == NULL) {
+    if (de == NULL) {// 键不存在返回0
         addReply(c,shared.czero);
     } else {
-        if (removeExpire(c->db,c->argv[1])) {
+        if (removeExpire(c->db,c->argv[1])) {// 成功从过期键删除，返回1
             addReply(c,shared.cone);
             server.dirty++;
-        } else {
+        } else {// 否则返回0
             addReply(c,shared.czero);
         }
     }

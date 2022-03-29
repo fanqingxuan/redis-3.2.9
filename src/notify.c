@@ -99,11 +99,13 @@ void notifyKeyspaceEvent(int type, char *event, robj *key, int dbid) {
     char buf[24];
 
     /* If notifications for this class of events are off, return ASAP. */
+    // 通知类型不是服务器允许的键空间通知类型，直接返回
     if (!(server.notify_keyspace_events & type)) return;
 
     eventobj = createStringObject(event,strlen(event));
 
     /* __keyspace@<db>__:<key> <event> notifications. */
+    // 键空间通知
     if (server.notify_keyspace_events & NOTIFY_KEYSPACE) {
         chan = sdsnewlen("__keyspace@",11);
         len = ll2string(buf,sizeof(buf),dbid);
@@ -116,6 +118,7 @@ void notifyKeyspaceEvent(int type, char *event, robj *key, int dbid) {
     }
 
     /* __keyevente@<db>__:<event> <key> notifications. */
+    // 键事件通知
     if (server.notify_keyspace_events & NOTIFY_KEYEVENT) {
         chan = sdsnewlen("__keyevent@",11);
         if (len == -1) len = ll2string(buf,sizeof(buf),dbid);
