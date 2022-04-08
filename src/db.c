@@ -191,6 +191,7 @@ void setKey(redisDb *db, robj *key, robj *val) {
     if (lookupKeyWrite(db,key) == NULL) {
         dbAdd(db,key,val);
     } else {
+        // 如果键已经存在，则进行替换
         dbOverwrite(db,key,val);
     }
     incrRefCount(val);
@@ -307,7 +308,9 @@ int selectDb(client *c, int id) {
  *
  * Every time a DB is flushed the function signalFlushDb() is called.
  *----------------------------------------------------------------------------*/
-
+// set、lpush、del、hset等修改命令触发时，都会调用这个函数
+// 对watched_keys字典进行检查，查看是否有客户端正在监听这个key
+// 如果有，将监听这个key的所有客户端REDIS_DIRTY_CAS标识打开，表示客户端事务安全性被破坏
 void signalModifiedKey(redisDb *db, robj *key) {
     touchWatchedKey(db,key);
 }

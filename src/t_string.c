@@ -83,6 +83,9 @@ void setGenericCommand(client *c, int flags, robj *key, robj *val, robj *expire,
         addReply(c, abort_reply ? abort_reply : shared.nullbulk);
         return;
     }
+    // 注意这里没有校验key已存在情况，对应的值得类型
+    // 换句话说，就是即使之前key存储的值是hash、list等，也可以改成值存储string类型
+    // 但是其他命令比如hset、sadd、lpush等命令都会校验若key存在，存储的类型是否是对应的类型
     setKey(c->db,key,val);
     server.dirty++;
     if (expire) setExpire(c->db,key,mstime()+milliseconds);
