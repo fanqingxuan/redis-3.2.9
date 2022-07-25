@@ -1040,6 +1040,7 @@ void ttlGenericCommand(client *c, int output_ms) {
     }
     /* The key exists. Return -1 if it has no expire, or the actual
      * TTL value otherwise. */
+    // 键存在，并且没设置过期时间，则返回-1，否则返回过期时间
     expire = getExpire(c->db,c->argv[1]);
     if (expire != -1) {
         ttl = expire-mstime();
@@ -1049,6 +1050,7 @@ void ttlGenericCommand(client *c, int output_ms) {
     if (ttl == -1) {
         addReplyLongLong(c,-1);
     } else {
+        // 剩余过期时间
         addReplyLongLong(c,output_ms ? ttl : ((ttl+500)/1000));
     }
 }
@@ -1068,7 +1070,7 @@ void persistCommand(client *c) {
     if (de == NULL) {// 键不存在返回0
         addReply(c,shared.czero);
     } else {
-        if (removeExpire(c->db,c->argv[1])) {// 成功从过期键删除，返回1
+        if (removeExpire(c->db,c->argv[1])) {// 如果能成功删除设置有过期键的key，则返回1
             addReply(c,shared.cone);
             server.dirty++;
         } else {// 否则返回0

@@ -35,7 +35,7 @@
  *----------------------------------------------------------------------------*/
 
 static int checkStringLength(client *c, long long size) {
-    if (size > 512*1024*1024) {
+    if (size > 512*1024*1024) {// 字符串长度最大512M
         addReplyError(c,"string exceeds maximum allowed size (512MB)");
         return C_ERR;
     }
@@ -306,13 +306,13 @@ void mgetCommand(client *c) {
 void msetGenericCommand(client *c, int nx) {
     int j, busykeys = 0;
 
-    if ((c->argc % 2) == 0) {
+    if ((c->argc % 2) == 0) {//如果参数个数是奇数个，则直接报错
         addReplyError(c,"wrong number of arguments for MSET");
         return;
     }
     /* Handle the NX flag. The MSETNX semantic is to return zero and don't
      * set nothing at all if at least one already key exists. */
-    if (nx) {
+    if (nx) {//如果有key已经存在，则直接返回0
         for (j = 1; j < c->argc; j += 2) {
             if (lookupKeyWrite(c->db,c->argv[j]) != NULL) {
                 busykeys++;
@@ -330,7 +330,7 @@ void msetGenericCommand(client *c, int nx) {
         notifyKeyspaceEvent(NOTIFY_STRING,"set",c->argv[j],c->db->id);
     }
     server.dirty += (c->argc-1)/2;
-    addReply(c, nx ? shared.cone : shared.ok);
+    addReply(c, nx ? shared.cone : shared.ok);//msetnx返回1，mset返回ok
 }
 
 void msetCommand(client *c) {
@@ -346,8 +346,8 @@ void incrDecrCommand(client *c, long long incr) {
     robj *o, *new;
 
     o = lookupKeyWrite(c->db,c->argv[1]);
-    if (o != NULL && checkType(c,o,OBJ_STRING)) return;
-    if (getLongLongFromObjectOrReply(c,o,&value,NULL) != C_OK) return;
+    if (o != NULL && checkType(c,o,OBJ_STRING)) return;//类型检查
+    if (getLongLongFromObjectOrReply(c,o,&value,NULL) != C_OK) return;//检查value是否long类型，是long类型则值赋给value变量
 
     oldvalue = value;
     if ((incr < 0 && oldvalue < 0 && incr < (LLONG_MIN-oldvalue)) ||
